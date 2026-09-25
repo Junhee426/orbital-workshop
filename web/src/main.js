@@ -7,7 +7,9 @@ const $=id=>document.getElementById(id),all=q=>[...document.querySelectorAll(q)]
 const world=new World($('space')),sound=new Sound();
 let profile=freshProfile(),game=new Mission(),hasActive=false,mode='home',paused=false,selected='drive';
 let repairHeld=false,lastSave=0,saveAvailable=true,helpWasPaused=false,toastTimer;
-const keys=new Set(),touchKeys=new Set();
+const keys=new Set(),touchKeys=new Set(),touchPointers=new Map();
+let repairPointer=null;
+function clearTouch(){touchKeys.clear();touchPointers.clear();repairPointer=null;all('[data-key]').forEach(b=>b.classList.remove('held'));}
 try {const saved=decodeSave(localStorage.getItem(SAVE_KEY));if(saved){profile=saved.profile;if(saved.mission){game=saved.mission;hasActive=true;award(profile,game);}}}catch{saveAvailable=false;}
 const setText=(id,text)=>{if($(id).textContent!==String(text))$(id).textContent=text;};
 const timeLabel=n=>`${Math.floor(n/60).toString().padStart(2,'0')}:${Math.floor(n%60).toString().padStart(2,'0')}`;
@@ -35,7 +37,7 @@ function launch(training=false,resume=false){
  sound.unlock();sound.click();
  if(!resume)game=new Mission({precision:profile.precision,training});
  hasActive=true;mode=game.stage==='complete'?'result':'play';paused=false;selected='drive';repairHeld=false;
- world.orbit={x:0,y:0,zoom:1};keys.clear();touchKeys.clear();$('pauseOverlay').hidden=true;
+ world.orbit={x:0,y:0,zoom:1};keys.clear();clearTouch();$('pauseOverlay').hidden=true;
  $('torque').value=String(Math.round(game.torque*100));
  if(mode==='result')showResult();else{updateHome();renderUI();save();}
 }
@@ -53,10 +55,10 @@ function events(){
 function action(){if(mode!=='play'||paused)return;if(game.stage==='release')return;game.act(selected);sound.click();events();}
 function selectPart(part){if(mode!=='play'||paused)return;selected=part;repairHeld=false;sound.click();renderUI();}
 function pause(value){
- if(mode!=='play')return;paused=value;keys.clear();touchKeys.clear();repairHeld=false;
+ if(mode!=='play')return;paused=value;keys.clear();clearTouch();repairHeld=false;
  $('pauseOverlay').hidden=!paused;setText('pauseButton',paused?'▷':'Ⅱ');$('pauseButton').setAttribute('aria-label',paused?'작업 계속':'일시정지');save();
 }
-function openHelp(){helpWasPaused=paused;if(mode==='play'){paused=true;keys.clear();touchKeys.clear();repairHeld=false;save();}$('pauseOverlay').hidden=true;$('helpOverlay').hidden=false;}
+function openHelp(){helpWasPaused=paused;if(mode==='play'){paused=true;keys.clear();clearTouch();repairHeld=false;save();}$('pauseOverlay').hidden=true;$('helpOverlay').hidden=false;}
 function closeHelp(){$('helpOverlay').hidden=true;if(mode==='play'){paused=helpWasPaused;$('pauseOverlay').hidden=!paused;}}
 const stageHelp={
  approach:'안내 링을 따라 접근 · Space로 제동 · A/D로 좌우 보정',
@@ -134,10 +136,15 @@ all('.part-tag').forEach(el=>el.addEventListener('click',()=>selectPart(el.datas
 all('[data-diagnosis]').forEach(el=>el.addEventListener('click',()=>{if(paused)return;game.diagnose(el.dataset.diagnosis);events();}));
 $('torque').addEventListener('input',e=>{game.torque=Number(e.target.value)/100;renderUI();});
 $('actionButton').addEventListener('click',action);
-$('actionButton').addEventListener('pointerdown',e=>{if(game.stage==='release'&&mode==='play'&&!paused){e.currentTarget.setPointerCapture(e.pointerId);repairHeld=true;sound.click();}});
-const release=()=>{repairHeld=false;touchKeys.clear();all('[data-key]').forEach(b=>b.classList.remove('held'));};
+$('actionButton').addEventListener('pointerdown',e=>{if(game.stage==='release'&&mode==='play'&&!paused){e.currentTarget.setPointerCapture(e.pointerId);repairPointer=e.pointerId;repairHeld=true;sound.click();}});
+// Release only what the lifted pointer was holding, so other fingers keep their controls.
+const release=e=>{
+ if(e.pointerId===repairPointer){repairPointer=null;repairHeld=false;}
+ const key=touchPointers.get(e.pointerId);if(!key)return;touchPointers.delete(e.pointerId);
+ if(![...touchPointers.values()].includes(key)){touchKeys.delete(key);document.querySelector(`[data-key="${key}"]`)?.classList.remove('held');}
+};
 document.addEventListener('pointerup',release);document.addEventListener('pointercancel',release);
-all('[data-key]').forEach(el=>el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);touchKeys.add(el.dataset.key);el.classList.add('held');}));
+all('[data-key]').forEach(el=>el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);touchPointers.set(e.pointerId,el.dataset.key);touchKeys.add(el.dataset.key);el.classList.add('held');}));
 $('exportButton').addEventListener('click',()=>{
  const blob=new Blob([encodeSave(profile,hasActive?game:null)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download='orbital-workshop-save.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -145,7 +152,9 @@ $('exportButton').addEventListener('click',()=>{
 document.addEventListener('keydown',e=>{
  if(e.code==='Escape'){e.preventDefault();if(!$('helpOverlay').hidden)closeHelp();else pause(!paused);return;}
  if(e.code==='KeyH'&&!e.repeat){$('helpOverlay').hidden?openHelp():closeHelp();return;}
- if(e.target.matches('input,textarea,select'))return;
+ // Range sliders keep their own arrow/paging keys; game keys like F still work while one has focus.
+ if(e.target.matches('input:not([type=range]),textarea,select'))return;
+ if(e.target.matches('input[type=range]')&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Home','End','PageUp','PageDown'].includes(e.code))return;
  if(mode!=='play'||paused)return;
  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','KeyF','KeyT','KeyR'].includes(e.code))e.preventDefault();
  keys.add(e.code);
@@ -155,7 +164,7 @@ document.addEventListener('keydown',e=>{
  if(e.code==='KeyR'){game.rescue();events();save();}
 });
 document.addEventListener('keyup',e=>{keys.delete(e.code);if(e.code==='KeyF')repairHeld=false;});
-window.addEventListener('blur',()=>{if(mode==='play'&&!paused)pause(true);keys.clear();touchKeys.clear();repairHeld=false;});
+window.addEventListener('blur',()=>{if(mode==='play'&&!paused)pause(true);keys.clear();clearTouch();repairHeld=false;});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='play')pause(true);});
 window.addEventListener('pagehide',save);window.addEventListener('resize',()=>world.resize());
 let drag=null;

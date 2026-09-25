@@ -52,7 +52,8 @@ try {
  await page.keyboard.press('Escape');await page.reload();await page.waitForFunction(()=>!!window.orbitalWorkshop);
  await page.click('#continueButton');await stage('release');assert.equal((await state()).powerOn,false);
  await page.click('#partLatch');const slider=await page.locator('#torque').boundingBox();await page.mouse.click(slider.x+slider.width/2,slider.y+slider.height/2);
- await page.click('#partLatch');await page.screenshot({path:`${output}/03-repair.png`});
+ assert.equal(await page.evaluate(()=>document.activeElement.id),'torque','F must work while the torque slider keeps focus');
+ await page.screenshot({path:`${output}/03-repair.png`});
  await page.keyboard.down('f');await stage('restore');await page.keyboard.up('f');
  await page.click('#partPower');await page.click('#actionButton');await stage('test');await page.click('#actionButton');await stage('complete');
  await page.waitForFunction(()=>window.orbitalWorkshop.getStatus().mode==='result');
@@ -73,6 +74,17 @@ try {
  const forward=await mobile.locator('[data-key="KeyW"]').boundingBox();await mobile.mouse.move(forward.x+forward.width/2,forward.y+forward.height/2);await mobile.mouse.down();await mobile.waitForTimeout(700);await mobile.mouse.up();
  assert.ok((await mobile.evaluate(()=>window.orbitalWorkshop.getSnapshot().vel[2]))<0);
  await mobile.screenshot({path:`${output}/07-mobile-flight.png`});
+ // Lifting a second finger must not release the control still held by the first.
+ const cdp=await mobileContext.newCDPSession(mobile),brake=await mobile.locator('[data-key="Space"]').boundingBox();
+ const finger1={x:forward.x+forward.width/2,y:forward.y+forward.height/2,id:1},finger2={x:brake.x+brake.width/2,y:brake.y+brake.height/2,id:2};
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[finger1]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[finger1,finger2]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[finger2]});
+ await mobile.waitForTimeout(100);
+ assert.equal(await mobile.locator('[data-key="KeyW"]').evaluate(el=>el.classList.contains('held')),true);
+ assert.equal(await mobile.locator('[data-key="Space"]').evaluate(el=>el.classList.contains('held')),false);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await mobile.waitForTimeout(100);
+ assert.equal(await mobile.locator('[data-key="KeyW"]').evaluate(el=>el.classList.contains('held')),false);
  assert.deepEqual(errors,[]);assert.deepEqual(outsideRequests,[]);
  console.log('Responsive touch control, no console errors, no external runtime requests: passed');
  console.log('ALL BROWSER CHECKS PASSED');
