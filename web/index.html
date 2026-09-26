@@ -56,14 +56,14 @@
     <div class="distance"><span class="tiny">결합부 거리</span><strong><span id="distanceValue">—</span><small>m</small></strong></div>
     <dl><div><dt>상대속도</dt><dd><b id="speedValue">—</b><small> m/s</small></dd></div><div><dt>방향 오차</dt><dd><b id="angleValue">—</b><small> °</small></dd></div></dl>
     <div class="capture-checks"><span id="distanceCheck">○ 거리</span><span id="speedCheck">○ 속도</span><span id="angleCheck">○ 방향</span></div>
-    <p id="captureHint" class="muted">결합부 1.15m 이내 · 상대속도 0.48m/s 미만</p>
+    <p id="captureHint" class="muted">포획 조건을 확인하세요</p>
     <button id="assistButton" class="secondary wide compact" aria-pressed="true">자세 보조 ON <kbd>T</kbd></button>
    </div>
    <div id="repairData" hidden>
     <div class="measurement"><span>전원부 <small id="powerScanned">미확인</small></span><strong id="voltageValue">— V</strong></div>
     <div class="measurement"><span>전개부 <small id="driveScanned">미확인</small></span><strong id="driveValue">—</strong></div>
     <div id="diagnosisChoices" hidden><p>관찰 결과에 맞는 원인은?</p><button data-diagnosis="battery">배터리 전압 저하</button><button data-diagnosis="latch">전개부 래치 고착</button><button data-diagnosis="antenna">안테나 지향 이상</button></div>
-    <div id="torqueControl" hidden><label for="torque">토크 조절 <output id="torqueValue">18%</output></label><div class="torque-track"><span></span></div><input id="torque" type="range" min="0" max="100" value="18" aria-label="래치 해제 토크"><p id="torqueHint">안전 구간 40–60% · 게임용 작업 게이지</p></div>
+    <div id="torqueControl" hidden><label for="torque">토크 조절 <output id="torqueValue">18%</output></label><div class="torque-track"><span></span></div><input id="torque" type="range" min="0" max="100" value="18" aria-label="래치 해제 토크"><p id="torqueHint">안전 토크 구간을 확인하세요</p></div>
     <div class="system-line"><span>구동 전원</span><b id="powerState">연결</b></div><div class="system-line"><span>전개부 고정</span><b id="braceState">대기</b></div>
    </div>
    <div class="resource"><div><span>추진제</span><b id="fuelValue">100%</b></div><div class="bar"><i id="fuelBar"></i></div></div>
@@ -95,8 +95,8 @@
  </section>
  <div id="restoredLabel" class="restored-label" hidden><span class="dot"></span> METEO-07 · 관측 서비스 정상</div>
 
- <div id="pauseOverlay" class="overlay" hidden><section class="dialog panel"><span class="tiny">TAKE A BREATH</span><h2>작업을 잠시 멈췄습니다.</h2><p>진행 상황은 이 브라우저에 저장됩니다.</p><button id="resumeButton" class="primary wide">작업 계속 <kbd>ESC</kbd></button><button id="homeButton" class="secondary wide">저장 후 정비소로</button><button id="exportButton" class="text-button">진행 파일 다운로드</button></section></div>
- <div id="helpOverlay" class="overlay" hidden><section class="dialog help-dialog panel"><button id="closeHelp" class="close" aria-label="조작 안내 닫기">×</button><span class="tiny">OPERATOR'S HANDBOOK</span><h2>천천히, 정확하게.</h2><p>추진을 멈춰도 관성으로 움직입니다. 결합부 앞에서 제동하세요.</p><dl class="help-keys"><div><dt><kbd>W A S D</kbd></dt><dd>전진·후진·좌우 이동</dd></div><div><dt><kbd>Q / E</kbd></dt><dd>하강 / 상승</dd></div><div><dt><kbd>SPACE</kbd></dt><dd>제동</dd></div><div><dt><kbd>SHIFT</kbd></dt><dd>미세 추력</dd></div><div><dt><kbd>방향키</kbd></dt><dd>수동 방향 조절</dd></div><div><dt><kbd>T</kbd></dt><dd>대상 방향을 따르는 자세 보조</dd></div><div><dt><kbd>F</kbd></dt><dd>포획·검사·작업 / 수리 중 길게 누르기</dd></div><div><dt><kbd>R</kbd></dt><dd>접근 지점으로 견인</dd></div><div><dt><kbd>ESC / H</kbd></dt><dd>일시정지 / 조작 안내</dd></div></dl><p>포획 후 화면 속 부품 표식을 선택하세요. 두 부위를 스캔해 진단하고, 전원 분리 → 고정 → 래치 해제 → 전원 복구 → 작동 시험 순서로 정비합니다.</p><label class="quality"><input id="lowQuality" type="checkbox"> 저사양 모드</label><button id="helpDone" class="primary wide">준비됐습니다</button></section></div>
+ <dialog id="pauseOverlay" class="overlay" aria-label="일시정지" hidden><section class="dialog panel"><span class="tiny">TAKE A BREATH</span><h2>작업을 잠시 멈췄습니다.</h2><p>진행 상황은 이 브라우저에 저장됩니다.</p><button id="resumeButton" class="primary wide">작업 계속 <kbd>ESC</kbd></button><button id="homeButton" class="secondary wide">저장 후 정비소로</button><button id="exportButton" class="text-button">진행 파일 다운로드</button></section></dialog>
+ <dialog id="helpOverlay" class="overlay" aria-label="조작 안내" hidden><section class="dialog help-dialog panel"><button id="closeHelp" class="close" aria-label="조작 안내 닫기">×</button><span class="tiny">OPERATOR'S HANDBOOK</span><h2>천천히, 정확하게.</h2><p>추진을 멈춰도 관성으로 움직입니다. 결합부 앞에서 제동하세요.</p><dl class="help-keys"><div><dt><kbd>W A S D</kbd></dt><dd>전진·후진·좌우 이동</dd></div><div><dt><kbd>Q / E</kbd></dt><dd>하강 / 상승</dd></div><div><dt><kbd>SPACE</kbd></dt><dd>제동</dd></div><div><dt><kbd>SHIFT</kbd></dt><dd>미세 추력</dd></div><div><dt><kbd>방향키</kbd></dt><dd>수동 방향 조절</dd></div><div><dt><kbd>T</kbd></dt><dd>대상 방향을 따르는 자세 보조</dd></div><div><dt><kbd>F</kbd></dt><dd>포획·검사·작업 / 수리 중 길게 누르기</dd></div><div><dt><kbd>R</kbd></dt><dd>접근 지점으로 견인</dd></div><div><dt><kbd>ESC / H</kbd></dt><dd>일시정지 / 조작 안내</dd></div></dl><p>포획 후 화면 속 부품 표식을 선택하세요. 두 부위를 스캔해 진단하고, 전원 분리 → 고정 → 래치 해제 → 전원 복구 → 작동 시험 순서로 정비합니다.</p><label class="quality"><input id="lowQuality" type="checkbox"> 저사양 모드</label><button id="helpDone" class="primary wide">준비됐습니다</button></section></dialog>
  <div id="toast" role="status" hidden></div><div id="saveStatus" class="save-status"></div>
  <div id="boot" class="boot"><span class="orbital-logo">◌</span><p>정비 구역을 준비하고 있습니다…</p></div>
  <script type="module">import('./src/main.js').catch(error=>{console.error(error);const boot=document.getElementById('boot');boot.innerHTML='<h2>게임을 열지 못했습니다.</h2><p>Python 실행 서버를 통해 접속하고 WebGL 2를 지원하는 브라우저를 사용해 주세요.</p>';});</script>

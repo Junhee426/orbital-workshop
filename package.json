@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": {"test": "node --test tests/*.test.mjs", "start": "python3 server.py"},
-  "description": "A playable orbital repair workshop. Three.js r180 is vendored for offline use."
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "start": "python3 server.py",
+    "build": "node tools/build_standalone.mjs",
+    "test:e2e": "node tests/e2e.mjs"
+  },
+  "description": "A playable orbital repair workshop. Three.js r180 is vendored for offline use.",
+  "devDependencies": {
+    "esbuild": "0.25.10",
+    "playwright": "1.62.1"
+  }
 }
