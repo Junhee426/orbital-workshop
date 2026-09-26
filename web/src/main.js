@@ -1,6 +1,7 @@
 import {World} from './scene.js';
 import {Mission,STAGES,labels,clamp} from './mission.js';
-import {SAVE_KEY,freshProfile,decodeSave,encodeSave,award,purchasePrecision} from './storage.js';
+import {SaveStore,freshProfile,encodeSave,award,purchasePrecision} from './storage.js';
+import {CAPTURE,TORQUE,captureChecks,torqueIsSafe,torqueRangeLabel,rewardFor} from './rules.js';
 import {Sound} from './audio.js';
 
 const $=id=>document.getElementById(id),all=q=>[...document.querySelectorAll(q)];
@@ -8,16 +9,22 @@ const world=new World($('space')),sound=new Sound();
 let profile=freshProfile(),game=new Mission(),hasActive=false,mode='home',paused=false,selected='drive';
 let repairHeld=false,lastSave=0,saveAvailable=true,helpWasPaused=false,toastTimer;
 const keys=new Set(),touchKeys=new Set(),touchPointers=new Map();
-let repairPointer=null;
+let repairPointer=null,activeModal=null;
+const saves=new SaveStore(()=>localStorage);
+document.documentElement.style.setProperty('--torque-min',`${TORQUE.min*100}%`);
+document.documentElement.style.setProperty('--torque-width',`${(TORQUE.max-TORQUE.min)*100}%`);
 function clearTouch(){touchKeys.clear();touchPointers.clear();repairPointer=null;all('[data-key]').forEach(b=>b.classList.remove('held'));}
-try {const saved=decodeSave(localStorage.getItem(SAVE_KEY));if(saved){profile=saved.profile;if(saved.mission){game=saved.mission;hasActive=true;award(profile,game);}}}catch{saveAvailable=false;}
+try {const saved=saves.load();if(saved){profile=saved.profile;if(saved.mission){game=saved.mission;hasActive=true;award(profile,game);}}}catch{/* save() reports the read failure without replacing existing data. */}
 const setText=(id,text)=>{if($(id).textContent!==String(text))$(id).textContent=text;};
 const timeLabel=n=>`${Math.floor(n/60).toString().padStart(2,'0')}:${Math.floor(n%60).toString().padStart(2,'0')}`;
-const rewardFor=g=>400+Math.max(0,100-g.impacts*15-g.rescues*25);
 function toast(text){setText('toast',text);$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3300);}
 function save(){
- try{localStorage.setItem(SAVE_KEY,encodeSave(profile,hasActive?game:null));saveAvailable=true;setText('saveStatus','이 브라우저에 자동 저장');}
- catch{if(saveAvailable)toast('자동 저장을 사용할 수 없습니다. 일시정지 메뉴에서 진행 파일을 내려받으세요.');saveAvailable=false;setText('saveStatus','자동 저장 불가 · 진행 파일을 내려받으세요');}
+ try{saves.write(profile,hasActive?game:null);saveAvailable=true;setText('saveStatus','이 브라우저에 자동 저장');}
+ catch{
+  const message=saves.blocked?'저장 데이터를 읽지 못해 원본을 보호하고 있습니다. 새 작업을 시작하면 원본을 별도로 보관합니다.':'자동 저장을 사용할 수 없습니다. 일시정지 메뉴에서 진행 파일을 내려받으세요.';
+  if(saveAvailable)toast(message);saveAvailable=false;
+  setText('saveStatus',saves.blocked?'기존 저장 보호 중 · 새 작업 시작 시 원본 보관':'자동 저장 불가 · 진행 파일을 내려받으세요');
+ }
 }
 function updateHome(){
  $('home').hidden=!['home','hangar'].includes(mode);$('homeFooter').hidden=$('home').hidden;$('homeSceneLabel').hidden=$('home').hidden;
@@ -35,9 +42,9 @@ function updateHome(){
 }
 function launch(training=false,resume=false){
  sound.unlock();sound.click();
- if(!resume)game=new Mission({precision:profile.precision,training});
+ if(!resume){try{saves.beginNew();}catch{/* Keep playing in memory if storage or backup is unavailable. */}game=new Mission({precision:profile.precision,training});}
  hasActive=true;mode=game.stage==='complete'?'result':'play';paused=false;selected='drive';repairHeld=false;
- world.orbit={x:0,y:0,zoom:1};keys.clear();clearTouch();$('pauseOverlay').hidden=true;
+ world.orbit={x:0,y:0,zoom:1};keys.clear();clearTouch();setModal(null);
  $('torque').value=String(Math.round(game.torque*100));
  if(mode==='result')showResult();else{updateHome();renderUI();save();}
 }
@@ -54,19 +61,38 @@ function events(){
 }
 function action(){if(mode!=='play'||paused)return;if(game.stage==='release')return;game.act(selected);sound.click();events();}
 function selectPart(part){if(mode!=='play'||paused)return;selected=part;repairHeld=false;sound.click();renderUI();}
-function pause(value){
- if(mode!=='play')return;paused=value;keys.clear();clearTouch();repairHeld=false;
- $('pauseOverlay').hidden=!paused;setText('pauseButton',paused?'▷':'Ⅱ');$('pauseButton').setAttribute('aria-label',paused?'작업 계속':'일시정지');save();
+function setModal(id){
+ if(activeModal===id)return;
+ if(activeModal){const previous=$(activeModal);previous.close();previous.hidden=true;}
+ activeModal=id;paused=mode==='play'&&id!==null;
+ keys.clear();clearTouch();repairHeld=false;
+ if(id){$(id).hidden=false;$(id).showModal();}
+ setText('pauseButton',paused?'▷':'Ⅱ');
+ $('pauseButton').setAttribute('aria-label',paused?'작업 계속':'일시정지');
 }
-function openHelp(){helpWasPaused=paused;if(mode==='play'){paused=true;keys.clear();clearTouch();repairHeld=false;save();}$('pauseOverlay').hidden=true;$('helpOverlay').hidden=false;}
-function closeHelp(){$('helpOverlay').hidden=true;if(mode==='play'){paused=helpWasPaused;$('pauseOverlay').hidden=!paused;}}
+function pause(value){
+ if(mode!=='play')return;
+ if(activeModal==='helpOverlay'){if(value)helpWasPaused=true;return;}
+ setModal(value?'pauseOverlay':null);save();
+}
+function openHelp(){
+ if(activeModal==='helpOverlay')return;
+ helpWasPaused=paused;setModal('helpOverlay');if(mode==='play')save();
+}
+function closeHelp(){
+ if(activeModal!=='helpOverlay')return;
+ setModal(mode==='play'&&helpWasPaused?'pauseOverlay':null);
+}
+for(const id of ['pauseOverlay','helpOverlay'])$(id).addEventListener('cancel',event=>{
+ event.preventDefault();if(id==='helpOverlay')closeHelp();else pause(false);
+});
 const stageHelp={
  approach:'안내 링을 따라 접근 · Space로 제동 · A/D로 좌우 보정',
  survey:'위성의 전원부와 전개부 표식을 각각 선택한 뒤 스캔하세요.',
  diagnose:'오른쪽 측정값을 비교하고 고장의 원인을 선택하세요.',
  isolate:'전원부 표식을 선택하고 구동 전원을 분리하세요.',
  brace:'고정점 표식을 선택해 작업 팔로 전개부를 지지하세요.',
- release:'래치 선택 → 토크 40–60% → F 또는 작업 버튼 길게 누르기',
+ release:`래치 선택 → 토크 ${torqueRangeLabel} → F 또는 작업 버튼 길게 누르기`,
  restore:'전원부를 선택해 구동 전원을 다시 연결하세요.',
  test:'발전 상태와 신호가 회복되는지 작동 시험을 진행하세요.',
  complete:'기상위성이 정상 서비스를 재개했습니다.'
@@ -75,10 +101,11 @@ const actionLabels={approach:'포획 시도',survey:'선택 부위 스캔',diagn
 function renderUI(){
  if(mode!=='play')return;
  document.body.dataset.phase=game.stage;
- const m=game.metrics(),flight=game.stage==='approach',index=STAGES.indexOf(game.stage);
+ const m=game.metrics(),checks=captureChecks(m),flight=game.stage==='approach',index=STAGES.indexOf(game.stage);
+ setText('captureHint',`결합부 ${CAPTURE.distance}m 미만 · 상대속도 ${CAPTURE.speed}m/s 미만`);
  setText('radioText',game.notice);setText('modeTag',game.training?'회전 표적 훈련':'기본 작업');
  setText('distanceValue',m.distance.toFixed(1));setText('speedValue',m.speed.toFixed(2));setText('angleValue',m.angle.toFixed(1));
- [['distanceCheck',m.distance<1.15,'거리'],['speedCheck',m.speed<.48,'속도'],['angleCheck',m.angle<14&&m.spin<.14,'방향']].forEach(([id,ok,label])=>{$(id).classList.toggle('pass',ok);setText(id,`${ok?'✓':'○'} ${label}`);});
+ [['distanceCheck',checks.distance,'거리'],['speedCheck',checks.speed,'속도'],['angleCheck',checks.alignment,'방향']].forEach(([id,ok,label])=>{$(id).classList.toggle('pass',ok);setText(id,`${ok?'✓':'○'} ${label}`);});
  $('flightData').hidden=!flight;$('repairData').hidden=flight;$('rescueButton').hidden=!flight;
  setText('telemetryTitle',flight?'RELATIVE NAVIGATION':'SYSTEM DIAGNOSTICS');setText('cameraLabel',flight?'CHASE CAM':'TOOL CAM');
  $('touchControls').hidden=!flight;
@@ -90,9 +117,9 @@ function renderUI(){
  setText('powerState',game.powerOn?'연결':'분리');setText('braceState',game.braced?'고정 완료':'대기');
  $('diagnosisChoices').hidden=game.stage!=='diagnose';$('torqueControl').hidden=game.stage!=='release';
  setText('torqueValue',`${Math.round(game.torque*100)}%`);
- const torqueSafe=game.torque>=.4&&game.torque<=.6;
+ const torqueSafe=torqueIsSafe(game.torque);
  $('torqueValue').style.color=torqueSafe?'var(--mint)':'var(--orange)';
- setText('torqueHint',torqueSafe?'안전 구간 · 래치 선택 후 작업 버튼을 길게 누르세요.':'안전 구간 40–60% · 게임용 작업 게이지');
+ setText('torqueHint',torqueSafe?'안전 구간 · 래치 선택 후 작업 버튼을 길게 누르세요.':`안전 구간 ${torqueRangeLabel} · 게임용 작업 게이지`);
  const groupIndex=flight?0:index<=2?1:index<=6?2:3;
  all('#checklist li').forEach((el,i)=>{el.classList.toggle('active',i===groupIndex);el.classList.toggle('done',i<groupIndex);el.firstElementChild.textContent=i<groupIndex?'✓':String(i+1).padStart(2,'0');});
  setText('stepNumber',`STEP ${String(index+1).padStart(2,'0')} / 09`);setText('stageName',labels[game.stage]);setText('stageHint',stageHelp[game.stage]);
@@ -124,7 +151,7 @@ $('startButton').addEventListener('click',()=>launch());$('continueButton').addE
 $('trainingButton').addEventListener('click',()=>launch(true));
 $('upgradeButton').addEventListener('click',()=>{if(purchasePrecision(profile)){save();sound.stage();toast('정밀 추진기를 장착했습니다. 다음 출항부터 적용됩니다.');updateHome();}});
 $('returnButton').addEventListener('click',()=>{hasActive=false;mode='hangar';save();updateHome();sound.click();});
-$('homeButton').addEventListener('click',()=>{paused=false;mode='home';$('pauseOverlay').hidden=true;save();updateHome();});
+$('homeButton').addEventListener('click',()=>{mode='home';updateHome();setModal(null);save();});
 $('brand').addEventListener('click',e=>{e.preventDefault();if(mode==='play')pause(true);});
 $('pauseButton').addEventListener('click',()=>pause(!paused));$('resumeButton').addEventListener('click',()=>pause(false));
 $('helpButton').addEventListener('click',openHelp);$('closeHelp').addEventListener('click',closeHelp);$('helpDone').addEventListener('click',closeHelp);
@@ -150,6 +177,14 @@ $('exportButton').addEventListener('click',()=>{
  a.href=url;a.download='orbital-workshop-save.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 document.addEventListener('keydown',e=>{
+ if(e.code==='Tab'&&activeModal){
+  const controls=[...$(activeModal).querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],[tabindex]:not([tabindex="-1"])')].filter(el=>el.getClientRects().length);
+  const first=controls[0],last=controls.at(-1);
+  if(first&&((e.shiftKey&&document.activeElement===first)||(!e.shiftKey&&document.activeElement===last))){
+   e.preventDefault();(e.shiftKey?last:first).focus();
+  }
+  return;
+ }
  if(e.code==='Escape'){e.preventDefault();if(!$('helpOverlay').hidden)closeHelp();else pause(!paused);return;}
  if(e.code==='KeyH'&&!e.repeat){$('helpOverlay').hidden?openHelp():closeHelp();return;}
  // Range sliders keep their own arrow/paging keys; game keys like F still work while one has focus.
@@ -164,7 +199,7 @@ document.addEventListener('keydown',e=>{
  if(e.code==='KeyR'){game.rescue();events();save();}
 });
 document.addEventListener('keyup',e=>{keys.delete(e.code);if(e.code==='KeyF')repairHeld=false;});
-window.addEventListener('blur',()=>{if(mode==='play'&&!paused)pause(true);keys.clear();clearTouch();repairHeld=false;});
+window.addEventListener('blur',()=>{if(mode==='play')pause(true);keys.clear();clearTouch();repairHeld=false;});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='play')pause(true);});
 window.addEventListener('pagehide',save);window.addEventListener('resize',()=>world.resize());
 let drag=null;

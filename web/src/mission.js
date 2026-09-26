@@ -1,3 +1,4 @@
+import {CAPTURE,captureChecks,torqueIsSafe} from './rules.js';
 // Pure simulation: no DOM or rendering dependencies. Distances are game metres.
 export const STAGES = ['approach','survey','diagnose','isolate','brace','release','restore','test','complete'];
 export const clamp = (n,a,b) => Math.min(b,Math.max(a,n));
@@ -34,12 +35,13 @@ export class Mission {
   const speed=norm(tipVelocity.map((v,i)=>v-pv[i]));
   const angle=Math.hypot(wrap(this.yaw-this.targetYaw),this.pitch)*180/Math.PI;
   const spin=Math.abs(this.yawRate-this.omega);
-  return {distance,speed,angle,spin,ready:distance<1.15&&speed<0.48&&angle<14&&spin<0.14};
+  const metrics={distance,speed,angle,spin};
+  return {...metrics,ready:Object.values(captureChecks(metrics)).every(Boolean)};
  }
  capture(){
   if(this.stage!=='approach')return false;
   const m=this.metrics();
-  if(!m.ready){this.notify(m.distance>=1.15?'결합부까지 조금 더 접근하세요.':m.speed>=0.48?'상대속도가 높습니다. Space로 감속하세요.': '방향을 맞춰 주세요. T로 자세 보조를 켤 수 있습니다.');return false;}
+  if(!m.ready){this.notify(m.distance>=CAPTURE.distance?'결합부까지 조금 더 접근하세요.':m.speed>=CAPTURE.speed?'상대속도가 높습니다. Space로 감속하세요.': '방향을 맞춰 주세요. T로 자세 보조를 켤 수 있습니다.');return false;}
   this.transition('survey','결합 확인. 전원부와 전개부를 각각 선택해 스캔하세요.');
   return true;
  }
@@ -93,7 +95,7 @@ export class Mission {
    }
   }
   if(this.stage==='release'&&input.repairHeld&&input.part==='latch'&&!this.powerOn&&this.braced){
-   if(this.torque>=0.4&&this.torque<=0.6)this.repairProgress=clamp(this.repairProgress+dt/3,0,1);
+   if(torqueIsSafe(this.torque))this.repairProgress=clamp(this.repairProgress+dt/3,0,1);
    else this.repairProgress=clamp(this.repairProgress-dt*0.2,0,1);
    if(this.repairProgress>=1){this.repaired=true;this.transition('restore','래치가 풀렸습니다. 전원부를 선택해 전원을 다시 연결하세요.');}
   }

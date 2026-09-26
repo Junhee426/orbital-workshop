@@ -129,18 +129,18 @@ npm test
 선택적으로 브라우저 통합 테스트를 실행하려면 개발용 Playwright와 Chromium을 설치합니다. 게임 실행 자체에는 필요하지 않습니다.
 
 ```bash
-npm install --no-save playwright
+npm ci
 npx playwright install chromium
-node tests/e2e.mjs
+npm run test:e2e
 ```
 
-테스트가 Python 서버를 직접 시작하고 종료합니다. Windows에서 Python 명령이 `python`인 경우 `PYTHON=python` 환경변수를 지정하세요. `PLAYWRIGHT_MODULE`, `ORBITAL_CHROMIUM_EXECUTABLE`, `ORBITAL_TEST_PORT`, `ORBITAL_SCREENSHOT_DIR`로 테스트 환경을 지정할 수 있습니다.
+테스트가 Python 서버를 직접 시작하고 종료합니다. Windows에서는 `python`, macOS·Linux에서는 `python3`를 기본으로 사용합니다. `PYTHON` 환경변수로 변경할 수 있습니다. `PLAYWRIGHT_MODULE`, `ORBITAL_CHROMIUM_EXECUTABLE`, `ORBITAL_TEST_PORT`, `ORBITAL_SCREENSHOT_DIR`로 테스트 환경을 지정할 수 있습니다.
 
 소스를 변경한 뒤 `PLAY.html`을 다시 만들려면 개발용 번들러를 설치하고 빌드합니다.
 
 ```bash
-npm install --no-save esbuild@0.25.10
-node tools/build_standalone.mjs
+npm ci
+npm run build
 ```
 
 ## 범위
@@ -152,3 +152,5 @@ v0.1은 **첫 임무와 얕은 정비소 성장**을 구현한 시제품입니�
 ## 라이선스
 
 새로 작성한 프로젝트 코드는 MIT 라이선스입니다. Three.js는 MIT, Pretendard는 SIL Open Font License 1.1을 따릅니다. 원문은 `LICENSE`, `web/vendor/THREE-LICENSE.txt`, `web/fonts/OFL.txt`에 포함했습니다. `THIRD_PARTY_NOTICES.md`에서 구성을 확인할 수 있습니다.
+
+저장 복원에 실패하면 자동 저장을 중단해 원본을 보호합니다. 새 작업을 시작하면 기존 원본을 브라우저 저장소의 `orbital-workshop-save-v1-recovery-<시간>` 키에 보관한 뒤 새 진행을 저장합니다. 원본 보관에 실패하면 기존 저장을 유지하고 메모리에서만 플레이합니다.

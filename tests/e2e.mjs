@@ -8,7 +8,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const output=process.env.ORBITAL_SCREENSHOT_DIR||`${root}test-results`;
 await mkdir(output,{recursive:true});
 const port=process.env.ORBITAL_TEST_PORT||'8123';
-const server=spawn(process.env.PYTHON||'python3',['server.py','--port',port],{cwd:root});
+const server=spawn(process.env.PYTHON||(process.platform==='win32'?'python':'python3'),['server.py','--port',port],{cwd:root});
 server.stderr.on('data',()=>{});
 await new Promise((resolve,reject)=>{server.stdout.once('data',resolve);server.once('error',reject);server.once('exit',code=>reject(new Error(`Server exited: ${code}`)));});
 let browser,testPage;
@@ -22,10 +22,39 @@ try {
  const go=async()=>{await page.goto(`http://127.0.0.1:${port}`);await page.waitForFunction(()=>!!window.orbitalWorkshop);await page.evaluate(()=>document.fonts.ready);};
  const state=()=>page.evaluate(()=>window.orbitalWorkshop.getSnapshot());
  const stage=async value=>page.waitForFunction(s=>window.orbitalWorkshop.getSnapshot().stage===s,value,{timeout:20000});
- await go();await page.screenshot({path:`${output}/01-home.png`});
- await page.click('#startButton');await page.keyboard.press('f');assert.equal((await state()).stage,'approach');
+ const saveKey='orbital-workshop-save-v1',broken='{broken save';
+ // Seed before app initialization; a running page legitimately saves on pagehide.
+ await context.addInitScript(({saveKey,broken})=>{
+  if(localStorage.getItem(saveKey)===null)localStorage.setItem(saveKey,broken);
+ },{saveKey,broken});
+ await go();console.log('Initial render ready');await page.screenshot({path:`${output}/01-home.png`});
+ assert.equal(await page.evaluate(key=>localStorage.getItem(key),saveKey),broken);
+ await page.reload();await page.waitForFunction(()=>!!window.orbitalWorkshop);
+ assert.equal(await page.evaluate(key=>localStorage.getItem(key),saveKey),broken,'reload/pagehide must preserve a broken save');
+ await page.click('#startButton');
+ assert.equal(await page.evaluate(({saveKey,broken})=>Object.keys(localStorage).some(key=>key.startsWith(`${saveKey}-recovery-`)&&localStorage.getItem(key)===broken),{saveKey,broken}),true);
+ await page.keyboard.press('f');assert.equal((await state()).stage,'approach');
  await page.screenshot({path:`${output}/02-approach.png`});
- console.log('Boot/render and premature capture: passed');
+ console.log('Boot/render, save recovery and premature capture: passed');
+ await page.click('#helpButton');
+ const helpTime=(await state()).elapsed;
+ assert.equal(await page.locator('#helpOverlay').evaluate(el=>el.matches(':modal')),true);
+ for(let i=0;i<8;i++){
+  await page.keyboard.press('Tab');
+  assert.equal(await page.evaluate(()=>!!document.activeElement.closest('#helpOverlay')),true,'focus must stay inside help');
+ }
+ await page.keyboard.press('Shift+Tab');
+ assert.equal(await page.evaluate(()=>!!document.activeElement.closest('#helpOverlay')),true);
+ await page.screenshot({path:`${output}/09-help.png`});
+ await page.waitForTimeout(200);assert.equal((await state()).elapsed,helpTime);
+ await page.keyboard.press('Escape');
+ assert.equal(await page.evaluate(()=>document.activeElement.id),'helpButton');
+ assert.equal(await page.evaluate(()=>window.orbitalWorkshop.getStatus().paused),false);
+ await page.keyboard.press('Escape');await page.keyboard.press('h');await page.keyboard.press('Escape');
+ assert.equal(await page.locator('#pauseOverlay').evaluate(el=>el.matches(':modal')),true);
+ assert.equal(await page.evaluate(()=>window.orbitalWorkshop.getStatus().paused),true);
+ await page.keyboard.press('Escape');
+ console.log('Modal focus containment and nested pause restoration: passed');
  // Closed-loop keyboard pilot. Reads telemetry; never changes simulation state.
  const held=new Set();
  async function setKeys(next){for(const key of held)if(!next.has(key)){await page.keyboard.up(key);held.delete(key);}for(const key of next)if(!held.has(key)){await page.keyboard.down(key);held.add(key);}}
@@ -87,6 +116,17 @@ try {
  assert.equal(await mobile.locator('[data-key="KeyW"]').evaluate(el=>el.classList.contains('held')),false);
  assert.deepEqual(errors,[]);assert.deepEqual(outsideRequests,[]);
  console.log('Responsive touch control, no console errors, no external runtime requests: passed');
+ const standalone=await browser.newPage({viewport:{width:1000,height:800}}),standaloneRequests=[];
+ standalone.on('pageerror',error=>errors.push(error.message));
+ standalone.on('request',request=>{if(/^https?:/.test(request.url()))standaloneRequests.push(request.url());});
+ await standalone.goto(new URL('../PLAY.html',import.meta.url).href);
+ await standalone.waitForFunction(()=>!!window.orbitalWorkshop);
+ await standalone.click('#startButton');await standalone.keyboard.press('h');
+ assert.equal(await standalone.locator('#helpOverlay').evaluate(el=>el.matches(':modal')),true);
+ await standalone.keyboard.press('Escape');
+ assert.equal(await standalone.evaluate(()=>window.orbitalWorkshop.getStatus().paused),false);
+ assert.deepEqual(errors,[]);assert.deepEqual(standaloneRequests,[]);
+ console.log('Standalone file launch and modal controls: passed');
  console.log('ALL BROWSER CHECKS PASSED');
 } catch(error){if(testPage)await testPage.screenshot({path:`${output}/failure.png`}).catch(()=>{});throw error;}
 finally {await browser?.close();server.kill();}
