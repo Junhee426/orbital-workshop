@@ -1,3 +1,4 @@
+import {contractFor,availableParts} from './contracts.js';
 import * as T from '../vendor/three.module.min.js';
 const C={ivory:0xc8c8b6,dark:0x26313b,orange:0xef9a4b,blue:0x123450,gold:0x9e7841,green:0x91dfb3};
 const mat=(color,metalness=.35,roughness=.6)=>new T.MeshStandardMaterial({color,metalness,roughness});
@@ -56,13 +57,14 @@ function satellite(){
  cyl(antenna,.08,.11,.55,[0,.2,0],dark);
  const dish=new T.Mesh(new T.SphereGeometry(.65,24,12,0,Math.PI*2,0,.9),white);dish.position.y=.45;dish.rotation.x=.5;antenna.add(dish);
  cyl(antenna,.03,.035,.75,[0,.8,0],orange);
- const parts={power:V(-.67,.26,1.27),drive:V(1.3,.38,1.13),brace:V(1.17,-.08,1.18),latch:V(1.44,-.46,1.2)};
+ const battery=box(root,[.55,.38,.24],[-.65,-.45,1.13],mat(C.orange));
+ const parts={battery:V(-.65,-.45,1.4),antenna:V(0,2.05,.45),power:V(-.67,.26,1.27),drive:V(1.3,.38,1.13),brace:V(1.17,-.08,1.18),latch:V(1.44,-.46,1.2)};
  const markers={};
  for(const [id,p] of Object.entries(parts)){
   const marker=torus(root,.18,.014,p.toArray(),new T.MeshBasicMaterial({color:0xf1b174,transparent:true,opacity:.7,depthTest:false}));
   markers[id]=marker;
  }
- return {root,folded,docking,status,switchHandle,latch,antenna,parts,markers};
+ return {root,folded,docking,status,switchHandle,latch,antenna,battery,plate,parts,markers};
 }
 function tug(){
  const root=new T.Group(),white=mat(0xc9d0cd),dark=mat(0x263847),orange=mat(C.orange),metal=mat(0x6f8594,.8,.3);
@@ -154,21 +156,28 @@ export class World {
  render(g,mode,selected,dt){
   this.time+=dt;this.earth.time.value=this.time;
   const playing=mode==='play'||mode==='result';
+  const config=contractFor(playing?g.contractId:this.previewContract);
+  if(this.lastContract!==config.id){
+   this.sat.root.remove(this.sat.plate);this.sat.plate.geometry.dispose();this.sat.plate.material.map.dispose();this.sat.plate.material.dispose();
+   this.sat.plate=label(config.satellite,1.3,.33);this.sat.plate.position.set(0,.64,1.03);this.sat.root.add(this.sat.plate);this.lastContract=config.id;
+  }
   const a=playing?g.targetYaw:.22+Math.sin(this.time*.1)*.16;
   this.sat.root.rotation.y=a;
-  const panel=playing?g.panel:(mode==='hangar'&&g?.stage==='complete'?1:0);
+  const panel=playing?g.panel:config.id==='solar'?(mode==='hangar'&&g?.stage==='complete'?1:0):1;
   this.sat.folded.rotation.y=-1.34*(1-panel);
-  this.sat.latch.position.x=1.32+(playing?g.repairProgress*.25:0);
+  this.sat.latch.position.x=1.32+(playing&&g.contractId==='solar'?g.repairProgress*.25:0);
   this.sat.switchHandle.rotation.z=playing&&!g.powerOn?Math.PI/2:0;
-  this.sat.status.material.color.setHex(panel>.9?0x83dfb5:0xf2a958);
+  this.sat.status.material.color.setHex(playing&&g.stage==='complete'?0x83dfb5:0xf2a958);
   this.sat.docking.material.color.setHex(playing&&g.stage!=='approach'?0x88cdaa:0xe0a252);
-  this.sat.antenna.rotation.y=panel*.4;
+  this.sat.antenna.rotation.y=config.id==='antenna'?(playing&&g.repaired?0:playing&&g.stage==='release'?(g.torque-.72)*Math.PI:1.1):panel*.4;
+  this.sat.battery.position.z=1.13+(playing&&config.id==='battery'?Math.sin(g.repairProgress*Math.PI)*.65:0);
+  this.sat.battery.material.color.setHex(playing&&config.id==='battery'&&g.repaired?0x83dfb5:C.orange);
   this.guides.visible=playing&&g.stage==='approach';
   this.ship.root.position.set(...(playing?g.pos:[-7,-3,6]));
   this.ship.root.rotation.set(playing?g.pitch:0,playing?g.yaw:-.35,0,'YXZ');
   this.ship.plumes.forEach(p=>{p.visible=playing&&g.thrust>.05;p.scale.y=.7+g?.thrust*.6+Math.sin(this.time*40)*.1;});
   for(const [id,m] of Object.entries(this.sat.markers)){
-   m.visible=playing&&g.stage!=='approach'&&g.stage!=='complete';
+   m.visible=playing&&availableParts(g).includes(id);
    m.material.opacity=id===selected?.95:.2;m.scale.setScalar(id===selected?1.05+Math.sin(this.time*4)*.08:1);
   }
   this.arm.visible=playing&&g.braced;

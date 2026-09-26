@@ -19,33 +19,36 @@
   <div class="eyebrow"><span class="line"></span> A LITTLE WORKSHOP IN ORBIT</div>
   <h1 id="homeTitle">오늘도,<br>궤도를 <em>고칩니다.</em></h1>
   <p class="intro-copy" id="homeCopy">당신의 손끝에서 위성이 깨어나고,<br>지구 어딘가에 신호가 다시 닿습니다.</p>
-  <section class="contract">
-   <div class="contract-heading"><span class="tiny">AVAILABLE CONTRACT</span><span class="tag">첫 의뢰 · 제한시간 없음</span></div>
-   <div class="contract-title"><span class="contract-number">01</span><div><h2>다시 펼쳐지는 날개</h2><p>METEO-07 · 기상위성 전개부 복구</p></div></div>
-   <p class="contract-copy">태양전지판 한쪽이 펼쳐지지 않습니다.<br>접근해 상태를 살피고, 오늘의 하늘을 되찾아 주세요.</p>
+  <section class="contract"><div id="contractChoices" class="contract-choices" role="group" aria-label="임무 선택"></div>
+   <div class="contract-heading"><span class="tiny">AVAILABLE CONTRACT</span><span id="contractReward" class="tag"></span></div>
+   <div class="contract-title"><span id="contractNumber" class="contract-number">01</span><div><h2 id="contractTitle">다시 펼쳐지는 날개</h2><p id="contractSatellite">METEO-07</p></div></div>
+   <p id="contractCopy" class="contract-copy"></p><p id="contractProgress" class="muted"></p>
    <button id="startButton" class="primary wide">작업 시작 <span>↗</span></button>
    <button id="continueButton" class="secondary wide" hidden>저장된 작업 이어하기 <span>→</span></button>
-   <div class="contract-meta"><span>조종 · 진단 · 수리</span><span>목표 체험 10분</span></div>
+   <div class="contract-meta"><span>조종 · 진단 · 수리</span><span>3개 의뢰 · 장비 성장</span></div>
   </section>
+  <div class="save-tools"><button id="importButton" class="text-button">진행 파일 불러오기</button><button id="homeExportButton" class="text-button">진행 파일 다운로드</button></div>
   <section id="workshop" class="workshop" hidden>
    <div class="workshop-head"><span>나의 정비소</span><strong id="credits">0 CR</strong></div>
-   <button id="upgradeButton" class="upgrade"><span><strong>정밀 추진기</strong><small>미세 접근 · 강화된 제동</small></span><b id="upgradeCost">180 CR</b></button>
+   <button id="upgradeButton" data-upgrade="precision" class="upgrade"><span><strong>정밀 추진기</strong><small>미세 접근 · 강화된 제동</small></span><b id="upgradeCost">180 CR</b></button>
+   <button data-upgrade="efficiency" class="upgrade"><span><strong>연료 회수 장치</strong><small>추진·제동 연료 35% 절약</small></span><b id="efficiencyCost">240 CR</b></button>
+   <button data-upgrade="shield" class="upgrade"><span><strong>충격 보호 프레임</strong><small>충돌 손상 50% 감소</small></span><b id="shieldCost">320 CR</b></button>
    <button id="trainingButton" class="text-button">회전 표적 정비 훈련 ↗</button>
    <p id="workshopStatus" class="muted"></p>
   </section>
  </main>
- <div id="homeSceneLabel" class="scene-label"><span class="tiny">WEATHER SATELLITE</span><strong>METEO—07</strong><span><i class="amber-dot"></i> 전개부 점검 필요</span></div>
- <footer id="homeFooter"><span>지구 저궤도 · 정비구역 07</span><span>PLAYABLE PROTOTYPE <b>v0.1</b></span></footer>
+ <div id="homeSceneLabel" class="scene-label"><span class="tiny">SERVICE CONTRACT</span><strong id="sceneSatellite">METEO-07</strong><span><i class="amber-dot"></i> 위성 정비 의뢰</span></div>
+ <footer id="homeFooter"><span>지구 저궤도 · 정비구역 07</span><span>PLAYABLE PROTOTYPE <b>v0.2</b></span></footer>
 
  <div id="hud" hidden>
   <aside class="mission-panel panel">
-   <div class="panel-top"><span class="tiny">CONTRACT 01</span><span class="tag" id="modeTag">기본 작업</span></div>
-   <h2>다시 펼쳐지는 날개</h2><p class="muted">METEO-07 · 전개부 정비</p>
+   <div class="panel-top"><span class="tiny" id="missionNumber">CONTRACT 01</span><span class="tag" id="modeTag">기본 작업</span></div>
+   <h2 id="missionTitle">다시 펼쳐지는 날개</h2><p id="missionSatellite" class="muted">METEO-07</p>
    <ol id="checklist" class="checklist">
     <li data-step="flight"><span>01</span><div>접근과 포획<small>상대속도를 맞춰 결합</small></div></li>
     <li data-step="diagnosis"><span>02</span><div>관찰과 진단<small>두 부위의 증상 비교</small></div></li>
-    <li data-step="repair"><span>03</span><div>전개부 정비<small>전원 분리 · 고정 · 해제</small></div></li>
-    <li data-step="verify"><span>04</span><div>서비스 복구<small>전개 시험과 신호 확인</small></div></li>
+    <li data-step="repair"><span>03</span><div>부품 정비<small>전원 분리 · 고정 · 해제</small></div></li>
+    <li data-step="verify"><span>04</span><div>서비스 복구<small>작동 시험과 신호 확인</small></div></li>
    </ol>
    <div class="radio"><span class="tiny"><span class="dot"></span> 정비소 · 수신 중</span><p id="radioText" aria-live="polite"></p></div>
   </aside>
@@ -61,13 +64,13 @@
    </div>
    <div id="repairData" hidden>
     <div class="measurement"><span>전원부 <small id="powerScanned">미확인</small></span><strong id="voltageValue">— V</strong></div>
-    <div class="measurement"><span>전개부 <small id="driveScanned">미확인</small></span><strong id="driveValue">—</strong></div>
+    <div class="measurement"><span><span id="scanPartName">전개부</span> <small id="driveScanned">미확인</small></span><strong id="driveValue">—</strong></div>
     <div id="diagnosisChoices" hidden><p>관찰 결과에 맞는 원인은?</p><button data-diagnosis="battery">배터리 전압 저하</button><button data-diagnosis="latch">전개부 래치 고착</button><button data-diagnosis="antenna">안테나 지향 이상</button></div>
-    <div id="torqueControl" hidden><label for="torque">토크 조절 <output id="torqueValue">18%</output></label><div class="torque-track"><span></span></div><input id="torque" type="range" min="0" max="100" value="18" aria-label="래치 해제 토크"><p id="torqueHint">안전 토크 구간을 확인하세요</p></div>
-    <div class="system-line"><span>구동 전원</span><b id="powerState">연결</b></div><div class="system-line"><span>전개부 고정</span><b id="braceState">대기</b></div>
+    <div id="torqueControl" hidden><label for="torque"><span id="repairControlName">토크 조절</span> <output id="torqueValue">18%</output></label><div class="torque-track"><span></span></div><input id="torque" type="range" min="0" max="100" value="18" aria-label="래치 해제 토크"><p id="torqueHint">안전 토크 구간을 확인하세요</p></div>
+    <div class="system-line"><span>구동 전원</span><b id="powerState">연결</b></div><div class="system-line"><span>작업부 고정</span><b id="braceState">대기</b></div>
    </div>
    <div class="resource"><div><span>추진제</span><b id="fuelValue">100%</b></div><div class="bar"><i id="fuelBar"></i></div></div>
-   <div class="system-line"><span>선체 상태</span><b id="integrityValue">100%</b></div>
+   <div class="system-line"><span>선체 상태</span><b id="integrityValue">100%</b></div><p id="brakingHint" class="muted"></p>
    <button id="rescueButton" class="text-button">접근 지점으로 견인 <kbd>R</kbd></button>
   </aside>
 
@@ -76,27 +79,31 @@
    <button class="part-tag" data-part="power" id="partPower"><i></i><span>전원부</span></button>
    <button class="part-tag" data-part="drive" id="partDrive"><i></i><span>전개부</span></button>
    <button class="part-tag" data-part="brace" id="partBrace"><i></i><span>고정점</span></button>
+   <button class="part-tag" data-part="battery" id="partBattery"><i></i><span>배터리</span></button><button class="part-tag" data-part="antenna" id="partAntenna"><i></i><span>안테나</span></button>
    <button class="part-tag" data-part="latch" id="partLatch"><i></i><span>래치</span></button>
   </div>
 
-  <section class="action-panel panel">
+  <section class="tutorial-coach panel" id="tutorialCoach"><button id="dismissTutorial" class="close" aria-label="실습 안내 숨기기">×</button><strong id="tutorialTitle"></strong><p id="tutorialText"></p></section>
+  <section class="action-panel panel"><div id="partPicker" class="part-picker" role="group" aria-label="정비 부품 선택"></div>
    <div class="action-info"><span class="tiny" id="stepNumber">STEP 01 / 09</span><h3 id="stageName">접근 · 포획</h3><p id="stageHint">W로 전진 · Space로 제동</p></div>
    <button id="actionButton" class="primary"><span id="actionLabel">포획 시도</span><kbd>F</kbd></button>
    <div class="task-progress"><i id="taskBar"></i></div>
   </section>
   <div class="controls-hint"><span><kbd>W A S D</kbd> 이동</span><span><kbd>Q E</kbd> 하강·상승</span><span><kbd>SPACE</kbd> 제동</span><span><kbd>SHIFT</kbd> 미세추력</span><span>드래그 · 휠 : 시점</span></div>
-  <div id="touchControls" class="touch-controls" aria-label="터치 비행 조작"><div><button data-key="KeyQ">하강</button><button data-key="KeyW">전진</button><button data-key="KeyE">상승</button><button data-key="KeyA">←</button><button data-key="KeyS">후진</button><button data-key="KeyD">→</button></div><button data-key="Space" class="brake">제동</button></div>
+  <div id="touchControls" class="touch-controls" aria-label="터치 비행 조작"><div><button data-key="KeyQ">하강</button><button data-key="KeyW">전진</button><button data-key="KeyE">상승</button><button data-key="KeyA">←</button><button data-key="KeyS">후진</button><button data-key="KeyD">→</button></div><div class="touch-attitude"><button data-key="ArrowLeft" aria-label="왼쪽 회전">↶</button><button data-key="ArrowRight" aria-label="오른쪽 회전">↷</button><button data-key="ArrowUp" aria-label="기수 올리기">↑</button><button data-key="ArrowDown" aria-label="기수 내리기">↓</button></div><div class="touch-aux"><button data-key="Space" class="brake">제동</button><button id="fineButton" aria-pressed="false">미세 OFF</button></div></div>
  </div>
 
  <section id="result" class="result panel" hidden>
-  <span class="eyebrow">CONTRACT COMPLETE</span><div class="result-mark">✓</div><h1>신호가<br>돌아왔습니다.</h1><p>“기상 데이터가 다시 들어옵니다.<br>오늘의 하늘을 되찾아 주셨네요.”</p><span class="tiny">— 지상 관측팀</span>
+  <span class="eyebrow">CONTRACT COMPLETE</span><div class="result-mark">✓</div><h1>신호가<br>돌아왔습니다.</h1><p>“전력과 신호가 다시 안정되었습니다.<br>다음 궤도에서도 함께하겠습니다.”</p><span class="tiny">— 지상 관제팀</span>
   <div class="result-metrics"><div><span>복구 신호</span><strong>100<small>%</small></strong></div><div><span>작업 시간</span><strong id="resultTime">—</strong></div><div><span>의뢰 보상</span><strong id="resultReward">—</strong></div></div>
-  <button id="returnButton" class="primary wide">정비소로 귀환 <span>→</span></button>
+  <p id="resultContract" class="muted"></p><button id="returnButton" class="primary wide">정비소로 귀환 <span>→</span></button>
  </section>
  <div id="restoredLabel" class="restored-label" hidden><span class="dot"></span> METEO-07 · 관측 서비스 정상</div>
 
- <dialog id="pauseOverlay" class="overlay" aria-label="일시정지" hidden><section class="dialog panel"><span class="tiny">TAKE A BREATH</span><h2>작업을 잠시 멈췄습니다.</h2><p>진행 상황은 이 브라우저에 저장됩니다.</p><button id="resumeButton" class="primary wide">작업 계속 <kbd>ESC</kbd></button><button id="homeButton" class="secondary wide">저장 후 정비소로</button><button id="exportButton" class="text-button">진행 파일 다운로드</button></section></dialog>
- <dialog id="helpOverlay" class="overlay" aria-label="조작 안내" hidden><section class="dialog help-dialog panel"><button id="closeHelp" class="close" aria-label="조작 안내 닫기">×</button><span class="tiny">OPERATOR'S HANDBOOK</span><h2>천천히, 정확하게.</h2><p>추진을 멈춰도 관성으로 움직입니다. 결합부 앞에서 제동하세요.</p><dl class="help-keys"><div><dt><kbd>W A S D</kbd></dt><dd>전진·후진·좌우 이동</dd></div><div><dt><kbd>Q / E</kbd></dt><dd>하강 / 상승</dd></div><div><dt><kbd>SPACE</kbd></dt><dd>제동</dd></div><div><dt><kbd>SHIFT</kbd></dt><dd>미세 추력</dd></div><div><dt><kbd>방향키</kbd></dt><dd>수동 방향 조절</dd></div><div><dt><kbd>T</kbd></dt><dd>대상 방향을 따르는 자세 보조</dd></div><div><dt><kbd>F</kbd></dt><dd>포획·검사·작업 / 수리 중 길게 누르기</dd></div><div><dt><kbd>R</kbd></dt><dd>접근 지점으로 견인</dd></div><div><dt><kbd>ESC / H</kbd></dt><dd>일시정지 / 조작 안내</dd></div></dl><p>포획 후 화면 속 부품 표식을 선택하세요. 두 부위를 스캔해 진단하고, 전원 분리 → 고정 → 래치 해제 → 전원 복구 → 작동 시험 순서로 정비합니다.</p><label class="quality"><input id="lowQuality" type="checkbox"> 저사양 모드</label><button id="helpDone" class="primary wide">준비됐습니다</button></section></dialog>
+ <dialog id="pauseOverlay" class="overlay" aria-label="일시정지" hidden><section class="dialog panel"><span class="tiny">TAKE A BREATH</span><h2>작업을 잠시 멈췄습니다.</h2><p>진행 상황은 이 브라우저에 저장됩니다.</p><button id="resumeButton" class="primary wide">작업 계속 <kbd>ESC</kbd></button><button id="homeButton" class="secondary wide">저장 후 정비소로</button><button id="exportButton" class="text-button">진행 파일 다운로드</button><button id="pauseImportButton" class="text-button">진행 파일 불러오기</button></section></dialog>
+ <dialog id="helpOverlay" class="overlay" aria-label="조작 안내" hidden><section class="dialog help-dialog panel"><button id="closeHelp" class="close" aria-label="조작 안내 닫기">×</button><span class="tiny">OPERATOR'S HANDBOOK</span><h2>천천히, 정확하게.</h2><p>추진을 멈춰도 관성으로 움직입니다. 결합부 앞에서 제동하세요.</p><dl class="help-keys"><div><dt><kbd>W A S D</kbd></dt><dd>전진·후진·좌우 이동</dd></div><div><dt><kbd>Q / E</kbd></dt><dd>하강 / 상승</dd></div><div><dt><kbd>SPACE</kbd></dt><dd>제동</dd></div><div><dt><kbd>SHIFT</kbd></dt><dd>미세 추력</dd></div><div><dt><kbd>방향키</kbd></dt><dd>수동 방향 조절</dd></div><div><dt><kbd>T</kbd></dt><dd>대상 방향을 따르는 자세 보조</dd></div><div><dt><kbd>F</kbd></dt><dd>포획·검사·작업 / 수리 중 길게 누르기</dd></div><div><dt><kbd>R</kbd></dt><dd>접근 지점으로 견인</dd></div><div><dt><kbd>ESC / H</kbd></dt><dd>일시정지 / 조작 안내</dd></div></dl><p>포획 후 화면 속 부품 표식을 선택하세요. 두 부위를 스캔해 진단하고, 전원 분리 → 고정 → 부품 정비 → 전원 복구 → 작동 시험 순서로 정비합니다.</p><label class="quality"><input id="lowQuality" type="checkbox"> 저사양 모드</label><button id="tutorialToggle" class="secondary wide">실습 안내 다시 켜기</button><button id="helpDone" class="primary wide">준비됐습니다</button></section></dialog>
+ <input id="importFile" type="file" accept=".json,application/json" hidden>
+ <dialog id="importOverlay" class="overlay" aria-label="진행 파일 불러오기" hidden><section class="dialog panel"><span class="tiny">RESTORE PROGRESS</span><h2>진행 파일 확인</h2><p id="importSummary"></p><p id="importError" role="alert"></p><p>불러오면 현재 진행을 교체합니다. 기존 저장은 브라우저에 백업합니다.</p><button id="confirmImport" class="primary wide">이 진행으로 불러오기</button><button id="cancelImport" class="secondary wide">취소</button></section></dialog>
  <div id="toast" role="status" hidden></div><div id="saveStatus" class="save-status"></div>
  <div id="boot" class="boot"><span class="orbital-logo">◌</span><p>정비 구역을 준비하고 있습니다…</p></div>
  <script type="module">import('./src/main.js').catch(error=>{console.error(error);const boot=document.getElementById('boot');boot.innerHTML='<h2>게임을 열지 못했습니다.</h2><p>Python 실행 서버를 통해 접속하고 WebGL 2를 지원하는 브라우저를 사용해 주세요.</p>';});</script>

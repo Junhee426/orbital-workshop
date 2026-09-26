@@ -27,3 +27,27 @@ button.part-tag:active:not(:disabled){transform:translate(-50%,calc(-50% + 1px))
 }
 
 dialog.overlay{margin:0;width:100%;height:100%;max-width:none;max-height:none;border:0;color:inherit}dialog.overlay::backdrop{background:transparent}
+
+/* v0.2 contract board and guided controls */
+.contract-choices{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}.contract-choices button{flex:1;padding:10px 5px;border:1px solid var(--line);border-radius:4px;background:#142834;font-size:10px;white-space:nowrap}.contract-choices button[aria-pressed=true],.part-picker button[aria-pressed=true]{border-color:var(--orange);color:var(--orange);background:#382a24}.contract-choices button:disabled{opacity:.6}.save-tools{display:flex;gap:20px}.upgrade+.upgrade{margin-top:8px}.home{top:13%;max-height:82%}.home h1{font-size:48px;margin:16px 0}.intro-copy{margin-bottom:20px}.contract-title{margin:16px 0 12px}.contract-copy{margin-bottom:12px}.action-panel{flex-wrap:wrap}.part-picker{display:flex;flex:0 0 100%;gap:8px}.part-picker button{min-height:38px;flex:1;border:1px solid var(--line);border-radius:5px;background:#142834;font-size:11px}.tutorial-coach{position:fixed;left:28px;bottom:165px;width:265px;padding:16px 28px 12px 16px}.tutorial-coach strong{font-size:11px;color:var(--orange)}.tutorial-coach p{font-size:11px;line-height:1.7;margin:9px 0 0;color:var(--muted)}.tutorial-coach .close{font-size:20px;right:8px;top:3px}#importError{color:var(--orange)}#pauseImportButton{margin-left:18px}#brakingHint{font-size:9px}#tutorialToggle{margin:12px 0}.help-dialog{max-width:100%}
+@media(max-width:1050px){.tutorial-coach{width:218px;left:18px;bottom:230px}}
+@media(max-width:760px){
+ .home{top:90px;max-height:calc(100dvh - 120px);width:calc(100% - 44px)}.home h1{font-size:34px}.intro-copy{font-size:11px;line-height:1.6}.contract-choices button{min-height:44px}.contract-title h2{font-size:17px}.save-tools button{min-height:44px}.upgrade{min-height:58px}
+ .touch-controls{left:12px;right:12px;bottom:140px;gap:8px;justify-content:center;align-items:end}.touch-controls>div{grid-template-columns:repeat(3,44px);gap:5px}.touch-controls button{width:44px;height:44px;font-size:11px}.touch-controls>.touch-attitude{grid-template-columns:repeat(2,44px)}.touch-attitude button{width:44px}.touch-controls>.touch-aux{grid-template-columns:60px}.touch-aux button,.touch-controls .brake{width:60px;height:44px}#fineButton[aria-pressed=true]{background:#b87b4f;color:white}
+ .tutorial-coach{left:12px;bottom:195px;width:calc(100% - 24px);padding:10px 28px 10px 12px}.tutorial-coach p{font-size:10px;line-height:1.5;margin:5px 0 0}.tutorial-coach strong{font-size:10px}body[data-phase=approach] .tutorial-coach{bottom:250px}.action-panel{gap:8px;padding:12px}.part-picker{gap:6px}.part-picker button{min-height:44px}.action-info{flex:1;min-width:0}.action-info p{max-width:100%}.action-panel .primary{min-height:46px;min-width:108px;max-width:45%;justify-content:center}.telemetry #brakingHint{margin:6px 0 0;font-size:8px}body[data-phase=approach] #brakingHint{max-width:65%}#torque{height:30px}#diagnosisChoices button{min-height:44px}
+}
+@media(max-height:740px) and (max-width:760px){.tutorial-coach p{font-size:9px}.tutorial-coach{bottom:180px}body[data-phase=approach] .tutorial-coach{bottom:245px}.home h1{font-size:28px}.intro-copy{display:none}.telemetry{top:146px}.mission-panel{top:80px}.radio p{font-size:9px}}
+@media(max-height:520px){.tutorial-coach{display:none}.touch-controls{left:12px;right:auto;bottom:100px;transform:scale(.85);transform-origin:left bottom}.action-panel{left:auto;right:12px;width:53%;transform:none}.telemetry{max-height:calc(100dvh - 210px);overflow:auto}.home{top:80px;max-height:calc(100dvh - 100px)}}
+
+/* The component tray stays accessible when projected labels would cover telemetry. */
+@media(max-width:760px){.part-tag{display:none}}
+@media(pointer:coarse){
+ .touch-controls{display:flex;gap:8px}.touch-controls>div{grid-template-columns:repeat(3,44px);gap:5px}.touch-controls button{width:44px;height:44px}.touch-controls>.touch-attitude{grid-template-columns:repeat(2,44px)}.touch-controls>.touch-aux{grid-template-columns:60px}.touch-aux button,.touch-controls .brake{width:60px;height:44px}.part-tag{display:none}
+}
+@media(pointer:coarse) and (max-height:520px){
+ .touch-controls{left:12px;right:auto;bottom:14px;transform:scale(.85);transform-origin:left bottom}.mission-panel{left:12px;top:75px;width:calc(50% - 24px);max-height:110px;overflow:auto}.telemetry{left:auto;right:12px;top:75px;width:calc(50% - 24px);max-height:calc(100dvh - 250px);overflow:auto}.action-panel{left:auto;right:12px;width:53%;bottom:12px;transform:none}.tutorial-coach{display:none}
+}
+
+@media(pointer:coarse){
+ .touch-controls{position:fixed;align-items:flex-end;z-index:5}.touch-controls>div{display:grid}.touch-controls button{background:#162c3be0;border:1px solid #7c9dac66;border-radius:6px;font-size:11px;touch-action:none}.touch-controls .brake{color:var(--orange);border-color:#edac7980}.touch-controls button.held,.touch-controls #fineButton[aria-pressed=true]{background:#b87b4f;color:white}
+}

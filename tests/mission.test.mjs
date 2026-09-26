@@ -9,7 +9,7 @@ function diagnose(g){g.act('power');step(g,1.5);g.act('drive');step(g,1.5);asser
 test('thrust accelerates, releasing preserves inertia, braking reduces relative speed',()=>{
  const g=new Mission();step(g,1,{forward:1});assert.ok(g.vel[2]<-.9);const speed=Math.hypot(...g.vel),fuel=g.fuel;
  step(g,.5);assert.ok(Math.abs(Math.hypot(...g.vel)-speed)<1e-9);assert.equal(g.fuel,fuel);
- step(g,1,{brake:true});assert.ok(Math.hypot(...g.vel)<.02);assert.ok(g.fuel<fuel);
+ step(g,1,{brake:true});assert.ok(g.metrics().speed<.02);assert.ok(g.fuel<fuel);
 });
 test('capture refuses excessive distance, speed, misalignment and relative rotation',()=>{
  const g=new Mission();assert.equal(g.capture(),false);g.pos=g.dockPosition();g.vel=[0,0,-1];assert.equal(g.capture(),false);

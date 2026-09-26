@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
+import {Mission} from '../web/src/mission.js';
+import {encodeSave} from '../web/src/storage.js';
+import {CONTRACTS} from '../web/src/contracts.js';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const root=fileURLToPath(new URL('../',import.meta.url));
 const output=process.env.ORBITAL_SCREENSHOT_DIR||`${root}test-results`;
@@ -96,6 +99,48 @@ try {
  await page.screenshot({path:`${output}/05-workshop.png`});
  await page.click('#trainingButton');assert.equal((await state()).training,true);assert.equal((await state()).precision,true);
  console.log('Reward idempotency and functional upgrade: passed');
+
+ await page.keyboard.press('Escape');await page.click('#homeButton');
+ assert.equal(await page.locator('[data-contract="battery"]').isDisabled(),false);
+ assert.equal(await page.locator('[data-contract="antenna"]').isDisabled(),true);
+ const importFile=async(target,contents)=>{
+  await target.locator('#importFile').setInputFiles({name:'progress.json',mimeType:'application/json',buffer:Buffer.from(contents)});
+  await target.waitForFunction(()=>!document.getElementById('confirmImport').disabled);
+ };
+ const originalProfile=await page.evaluate(()=>window.orbitalWorkshop.getProfile());
+ await page.locator('#importFile').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{invalid')});
+ await page.waitForFunction(()=>document.getElementById('importError').textContent.length>0);
+ assert.equal(await page.locator('#confirmImport').isDisabled(),true);await page.click('#cancelImport');
+ assert.deepEqual(await page.evaluate(()=>window.orbitalWorkshop.getProfile()),originalProfile);
+ for(const id of ['battery','antenna']){
+  await page.click(`[data-contract="${id}"]`);await page.click('#startButton');assert.equal((await state()).contractId,id);
+  await page.keyboard.press('Escape');await page.click('#homeButton');
+  const fixture=new Mission({contractId:id,precision:true});fixture.pos=fixture.dockPosition();assert.equal(fixture.capture(),true);
+  const profile=await page.evaluate(()=>window.orbitalWorkshop.getProfile());
+  await importFile(page,encodeSave(profile,fixture));
+  assert.match(await page.locator('#importSummary').textContent(),new RegExp(CONTRACTS[id].title));
+  await page.click('#confirmImport');await page.click('#continueButton');await stage('survey');
+  for(const part of CONTRACTS[id].scans){await page.click(`[data-select-part="${part}"]`);await page.click('#actionButton');await page.waitForFunction(part=>window.orbitalWorkshop.getSnapshot().scanned[part],part);}
+  await stage('diagnose');await page.click(`[data-diagnosis="${CONTRACTS[id].answer}"]`);await stage('isolate');
+  await page.click('[data-select-part="power"]');await page.click('#actionButton');await stage('brace');
+  await page.click('[data-select-part="brace"]');await page.click('#actionButton');await stage('release');
+  await page.click(`[data-select-part="${id}"]`);
+  if(id==='antenna'){await page.locator('#torque').focus();await page.keyboard.press('Home');for(let i=0;i<72;i++)await page.keyboard.press('ArrowRight');}
+  else assert.equal(await page.locator('#torqueControl').isVisible(),false);
+  await page.screenshot({path:`${output}/10-${id}-repair.png`});
+  await page.keyboard.down('f');await stage('restore');await page.keyboard.up('f');
+  await page.click('[data-select-part="power"]');await page.click('#actionButton');await stage('test');await page.click('#actionButton');await stage('complete');
+  await page.waitForFunction(()=>window.orbitalWorkshop.getStatus().mode==='result');await page.click('#returnButton');
+  assert.equal(await page.evaluate(id=>window.orbitalWorkshop.getProfile().completedContracts.includes(id),id),true);
+ }
+ await page.click('[data-upgrade="efficiency"]');await page.click('[data-upgrade="shield"]');
+ await page.click('[data-contract="antenna"]');await page.click('#startButton');
+ assert.equal((await state()).efficiency,true);assert.equal((await state()).shield,true);
+ await page.keyboard.press('Escape');await page.click('#homeButton');
+ const downloadPromise=page.waitForEvent('download');await page.click('#homeExportButton');const download=await downloadPromise;
+ assert.equal(download.suggestedFilename(),'orbital-workshop-save.json');
+ console.log('Contract unlocks, all repair types, equipment, invalid import and export: passed');
+
  const mobileContext=await browser.newContext({viewport:{width:430,height:932},isMobile:true,hasTouch:true}),mobile=await mobileContext.newPage();
  mobile.on('pageerror',e=>errors.push(e.message));await mobile.goto(`http://127.0.0.1:${port}`);await mobile.waitForFunction(()=>!!window.orbitalWorkshop);await mobile.evaluate(()=>document.fonts.ready);
  assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -116,6 +161,29 @@ try {
  assert.equal(await mobile.locator('[data-key="KeyW"]').evaluate(el=>el.classList.contains('held')),false);
  assert.deepEqual(errors,[]);assert.deepEqual(outsideRequests,[]);
  console.log('Responsive touch control, no console errors, no external runtime requests: passed');
+
+ await mobile.click('#fineButton');assert.equal(await mobile.locator('#fineButton').getAttribute('aria-pressed'),'true');
+ const beforeYaw=await mobile.evaluate(()=>window.orbitalWorkshop.getSnapshot().yaw);
+ const turn=await mobile.locator('[data-key="ArrowLeft"]').boundingBox();await mobile.mouse.move(turn.x+turn.width/2,turn.y+turn.height/2);await mobile.mouse.down();await mobile.waitForTimeout(400);await mobile.mouse.up();
+ assert.ok((await mobile.evaluate(()=>window.orbitalWorkshop.getSnapshot().yaw))>beforeYaw);
+ await mobile.click('#dismissTutorial');await mobile.keyboard.press('Escape');await mobile.click('#homeButton');
+ const mp=await mobile.evaluate(()=>window.orbitalWorkshop.getProfile()),mg=new Mission({contractId:'antenna'});mg.pos=mg.dockPosition();mg.capture();
+ await importFile(mobile,encodeSave(mp,mg));await mobile.click('#confirmImport');await mobile.click('#continueButton');
+ await mobile.click('[data-select-part="antenna"]');assert.equal(await mobile.evaluate(()=>window.orbitalWorkshop.getStatus().selected),'antenna');
+ await mobile.setViewportSize({width:360,height:640});await mobile.screenshot({path:`${output}/11-mobile-small.png`});
+ assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ const tray=await mobile.locator('#partPicker').boundingBox();assert.ok(tray.x>=0&&tray.x+tray.width<=360&&tray.y+tray.height<=640);
+ console.log('Mobile fine control, attitude, import and small-screen component tray: passed');
+
+ await mobile.keyboard.press('Escape');await mobile.click('#homeButton');await mobile.click('#startButton');
+ await mobile.setViewportSize({width:800,height:450});
+ assert.equal(await mobile.locator('#touchControls').isVisible(),true,'landscape touch controls remain available');
+ const touchBox=await mobile.locator('#touchControls').boundingBox(),actionBox=await mobile.locator('.action-panel').boundingBox();
+ assert.ok(touchBox.x+touchBox.width<=actionBox.x,'landscape flight and action controls must not overlap');
+ await mobile.screenshot({path:`${output}/12-mobile-landscape.png`});
+
+ await context.close();await mobileContext.close();
+
  const standalone=await browser.newPage({viewport:{width:1000,height:800}}),standaloneRequests=[];
  standalone.on('pageerror',error=>errors.push(error.message));
  standalone.on('request',request=>{if(/^https?:/.test(request.url()))standaloneRequests.push(request.url());});
