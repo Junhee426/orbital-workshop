@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#192c2e"><title>먼 곳의 불빛 · Surface Courier</title><link rel="icon" href="data:,"><link rel="stylesheet" href="surface.css"></head>
+<body>
+<canvas id="terrain" aria-label="탐사복을 입은 운송원이 걷는 행성 계곡"></canvas>
+<div class="grain" aria-hidden="true"></div>
+<header><a href="index.html" class="wordmark">ORBITAL WORKSHOP <span>/ SURFACE</span></a><div class="top-right"><span class="live">KEPLER · SECTOR 07</span><button id="pause" aria-label="일시정지">Ⅱ</button></div></header>
+<main id="briefing" class="briefing">
+ <p class="eyebrow">SURFACE COURIER / 001</p><h1>먼 곳의<br><em>불빛.</em></h1>
+ <p class="lead">통신이 끊긴 계곡.<br>당신이 짊어진 배터리 하나가<br>누군가의 밤을 바꿉니다.</p>
+ <div class="brief-details"><span>도보 운송</span><span>150 m</span><span>싱글플레이</span></div>
+ <button id="begin" class="primary">계곡으로 출발 <span>↗</span></button>
+ <p class="small"><span class="desktop-copy">WASD 이동 · 드래그로 시점 회전</span><span class="touch-copy">왼쪽 스틱 이동 · 오른쪽 드래그 시점</span><br>지상 운송 프로토타입 · 진행은 이번 플레이 동안 유지됩니다.</p>
+</main>
+<div id="hud" hidden>
+ <section class="objective"><p class="eyebrow" id="phase">01 / LOAD UP</p><h2 id="objectiveTitle">밤을 건너는 전력</h2><p id="objectiveCopy">보급소에서 배터리를 적재하세요.</p><div class="destination"><strong id="distance">4</strong><span>m <small id="destinationName">보급소</small></span></div></section>
+ <aside class="map-panel"><canvas id="map" width="200" height="224" aria-label="보급소, 쉼터와 중계소를 표시하는 경로 지도"></canvas><div class="route-controls" role="group" aria-label="안내 경로"><button id="valley" aria-pressed="true">계곡길</button><button id="ridge" aria-pressed="false">능선길</button></div><p id="routeNote">완만한 우회로 · 쉼터 경유</p></aside>
+ <section id="loadout" class="loadout"><span class="eyebrow">CARGO MANIFEST</span><h3>무엇을 짊어질까요?</h3><div role="group" aria-label="화물 선택"><button id="lightLoad" aria-pressed="true"><b>배터리</b><span>18 kg · 안정적인 운송</span></button><button id="heavyLoad" aria-pressed="false"><b>배터리 + 보급품</b><span>32 kg · 더 무거운 발걸음</span></button></div></section>
+ <div id="waypoint" class="waypoint" aria-hidden="true"><span>◇</span><small>중계소</small></div>
+ <section class="vitals"><div><span>체력</span><meter id="stamina" min="0" max="100" value="100"></meter><b id="staminaValue">100</b></div><div><span>균형</span><meter id="balance" min="0" max="100" value="100"></meter><b id="balanceValue">100</b></div><p><span id="cargoLabel">적재 대기</span><span id="condition">화물 —</span></p><p id="terrainState">완만한 지형</p></section>
+ <div class="bottom-center"><p id="radio" role="status">보급소에 도착했습니다.</p><button id="interact" class="primary">배터리 적재 <kbd>E</kbd></button><p class="keyboard-help">WASD 걷기 <i>·</i> Shift 달리기 <i>·</i> Space 짐 붙잡기 <i>·</i> 드래그 시점 <i>·</i> Esc 메뉴</p></div>
+ <div id="moveStick" class="touch-stick" role="group" aria-label="이동 스틱: 드래그 방향으로 이동하며 거리에 따라 속도가 달라집니다"><span class="stick-ring" aria-hidden="true"></span><span id="stickKnob" class="stick-knob" aria-hidden="true"></span><small id="stickState">이동</small></div>
+ <p class="look-hint" aria-hidden="true">오른쪽 화면을 밀어 시점 회전</p>
+ <div class="touch-actions" role="group" aria-label="운송 행동">
+  <button id="touchSprint" class="round-action sprint-action" aria-pressed="false"><span aria-hidden="true">⇧</span><b>달리기</b><small>OFF</small></button>
+  <button id="touchBrace" class="round-action brace-action" aria-pressed="false"><span aria-hidden="true">▣</span><b>짐 잡기</b><small>OFF</small></button>
+  <button id="centerCamera" class="round-action camera-action" aria-label="캐릭터 뒤로 시점 맞추기"><span aria-hidden="true">◎</span><b>시점</b></button>
+  <button id="touchInteract" class="round-action context-action"><span id="touchActionLabel">적재</span><small id="touchActionHint">탭하여 실행</small></button>
+ </div>
+</div>
+<section id="complete" class="completion" hidden><p class="eyebrow">CONNECTION RESTORED</p><div class="connection-mark">⌁</div><h1>여기에도,<br>빛이 돌아왔습니다.</h1><p>“수신 확인. 오늘 밤은 춥지 않겠군요.”<br><span>— 계곡 중계소, 마지막 무전</span></p><dl><div><dt>화물 상태</dt><dd id="finalCondition"></dd></div><div><dt>운송 시간</dt><dd id="finalTime"></dd></div><div><dt>연결한 거점</dt><dd id="finalConnections"></dd></div></dl><button id="again" class="primary">다른 길로 다시 걷기 ↗</button><a href="index.html">궤도 정비소로 돌아가기</a></section>
+<dialog id="pauseDialog"><form method="dialog"><p class="eyebrow">TAKE A BREATH</p><h2>잠시, 숨을 고르세요.</h2><p>WASD / 방향키로 걷고, 드래그로 시점을 회전합니다.<br>Shift로 달리고 Space로 짐을 붙잡으세요.<br>보급소·쉼터·목적지에서 E로 상호작용합니다.</p><p>청록색 계곡길은 완만합니다. 능선에서는 짐을 잡고 천천히 이동하세요. 쉼터에서는 체력과 균형을 회복할 수 있습니다.</p><p class="mobile-help">왼쪽 스틱을 조금 밀면 천천히 걷습니다. 오른쪽 화면을 밀어 시점을 돌리세요. 달리기·짐 잡기는 탭으로 켜고 끄며, 스틱에서 손을 떼면 달리기가 꺼집니다. 큰 작업 버튼은 적재·휴식·연결로 바뀝니다.</p><label class="sensitivity-setting" for="lookSensitivity"><span>시점 감도</span><output id="sensitivityValue">100%</output><input id="lookSensitivity" type="range" min="0.5" max="2" step="0.1" value="1"></label><button class="primary" id="resume">계속 걷기</button><button type="button" id="restart">처음부터 다시 시작</button><a href="index.html">궤도 정비소</a></form></dialog>
+<div id="boot">계곡을 준비하고 있습니다…</div>
+<script type="module">import './src/surface-main.js';</script>
+</body></html>
