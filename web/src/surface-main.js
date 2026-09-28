@@ -51,7 +51,9 @@ function openPause(){if(!started||game.stage==='complete')return;clearInput();if
 function reset(){clearInput();game=new SurfaceGame();wasComplete=false;scene.yaw=0;started=true;$('complete').hidden=true;$('briefing').hidden=true;$('hud').hidden=false;if(dialog.open)dialog.close();renderUI();}
 $('begin').onclick=()=>{started=true;$('briefing').hidden=true;$('hud').hidden=false;renderUI();$('terrain').focus();};
 bindTouchAction($('pause'),openPause);$('restart').onclick=reset;$('again').onclick=reset;
-dialog.addEventListener('close',()=>{clearInput();accumulator=0;});
+// Input is cleared when the dialog opens and ignored while it is open. Chrome dispatches close on a
+// later frame, so clearing here would drop keys or a stick touch that arrived right after closing.
+dialog.addEventListener('close',()=>{accumulator=0;});
 dialog.addEventListener('keydown',e=>{
  if(e.key!=='Tab')return;
  const items=[...dialog.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled)')],first=items[0],last=items.at(-1);
