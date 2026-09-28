@@ -95,9 +95,11 @@ npm run test:surface
 npm run test:surface:mobile
 ```
 
-- `npm test`: 임무 3종, 진행 해제, 장비 효과, 물리, 튜토리얼, 저장 호환성과 가져오기 실패 보호.
+- `npm test`: 임무 3종, 진행 해제, 장비 효과, 물리, 튜토리얼, 저장 호환성과 가져오기 실패 보호, 게임 서버의 상태 확인·캐시 헤더·폴더 목록 차단(Python이 있을 때).
 - `npm run build`: 소스·엔진·폰트를 하나로 묶은 `PLAY.html` 생성.
 - `npm run test:e2e`: 실제 브라우저 입력, 포획·수리, 모달, 의뢰 선택, 저장 파일, 모바일 터치와 단일 HTML 실행.
+
+GitHub Actions(`.github/workflows/ci.yml`)는 푸시와 PR마다 `npm test`를 실행하고 `npm run build` 결과가 커밋된 `PLAY.html`·`SURFACE.html`과 같은지 검사합니다. 브라우저 E2E 3종은 PR과 수동 실행에서 돌립니다.
 
 E2E는 Python 서버를 자동으로 시작하고 종료합니다. Windows에서는 `python`, 나머지 환경에서는 `python3`를 기본 사용합니다. `PYTHON`, `PLAYWRIGHT_MODULE`, `ORBITAL_CHROMIUM_EXECUTABLE`, `ORBITAL_TEST_PORT`, `ORBITAL_SCREENSHOT_DIR`로 환경을 지정할 수 있습니다. 새 임무의 수리 테스트는 정상적으로 생성한 저장 파일을 실제 불러오기 UI로 적용합니다. 첫 임무 접근은 실제 키보드 입력으로 수행합니다.
 
@@ -116,7 +118,7 @@ E2E는 Python 서버를 자동으로 시작하고 종료합니다. Windows에서
 
 ## 배포와 범위
 
-`render.yaml`은 Python Web Service 설정입니다. 시작 명령은 `python server.py --host 0.0.0.0`, 상태 확인 경로는 `/healthz`이며 포트는 `PORT` 환경변수를 읽습니다. 정적 호스팅에는 `web` 폴더를 사용할 수 있습니다. 이번 버전에서 실제 서비스 배포는 수행하지 않았습니다.
+`render.yaml`은 Python Web Service 설정입니다. 시작 명령은 `python server.py --host 0.0.0.0`, 상태 확인 경로는 `/healthz`이며 포트는 `PORT` 환경변수를 읽습니다. 서버는 모든 응답에 `Cache-Control: no-cache`를 보내 배포 직후에도 이전·새 모듈이 섞이지 않게 하고(변경 없는 파일은 304로 응답), 폴더 목록은 제공하지 않습니다. 정적 호스팅에는 `web` 폴더를 사용할 수 있습니다. 이번 버전에서 실제 서비스 배포는 수행하지 않았습니다.
 
 운동과 충돌은 게임을 위한 단순화 모델입니다. 완전한 궤도역학·정밀 접촉 해석·실제 토크 측정은 제공하지 않습니다. 모바일은 브라우저 에뮬레이션으로 검증하며 실제 iPhone·Android 기기와 모든 브라우저 조합의 검증은 별도입니다. 다인 플레이는 지원하지 않습니다.
 
