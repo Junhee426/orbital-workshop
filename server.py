@@ -11,21 +11,39 @@ ROOT = Path(__file__).resolve().parent / 'web'
 
 class Handler(SimpleHTTPRequestHandler):
     extensions_map = {**SimpleHTTPRequestHandler.extensions_map,
-                      '.js': 'text/javascript', '.mjs': 'text/javascript'}
+                      '.js': 'text/javascript', '.mjs': 'text/javascript', '.woff2': 'font/woff2'}
+
+    def health(self, include_body):
+        body = b'ok\n'
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/plain; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        if include_body:
+            self.wfile.write(body)
 
     def do_GET(self):
         if self.path == '/healthz':
-            body = b'ok\n'
-            self.send_response(200)
-            self.send_header('Content-Type', 'text/plain; charset=utf-8')
-            self.send_header('Content-Length', str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            self.health(True)
             return
         super().do_GET()
 
+    def do_HEAD(self):
+        if self.path == '/healthz':
+            self.health(False)
+            return
+        super().do_HEAD()
+
+    def list_directory(self, path):
+        # Serve files only; never enumerate the source, vendor or font folders.
+        self.send_error(404, 'File not found')
+        return None
+
     def end_headers(self):
         self.send_header('X-Content-Type-Options', 'nosniff')
+        # Revalidate every load so a deploy never mixes cached and new ES modules;
+        # unchanged files still answer 304 through Last-Modified.
+        self.send_header('Cache-Control', 'no-cache')
         super().end_headers()
 
 

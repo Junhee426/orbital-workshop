@@ -1,0 +1,25 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawn,spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const python=[process.env.PYTHON,process.platform==='win32'?'python':'python3','python'].find(bin=>bin&&spawnSync(bin,['--version']).status===0);
+test('server exposes health, revalidation headers and no directory listings',{skip:!python&&'Python is not installed'},async t=>{
+ const port=String(20000+Math.floor(Math.random()*20000));
+ const server=spawn(python,['server.py','--port',port],{cwd:root});
+ t.after(()=>server.kill());
+ await new Promise((resolve,reject)=>{server.stdout.once('data',resolve);server.once('error',reject);server.once('exit',code=>reject(new Error(`Server exited: ${code}`)));});
+ const url=path=>`http://127.0.0.1:${port}${path}`;
+ const health=await fetch(url('/healthz'));
+ assert.equal(health.status,200);assert.equal(await health.text(),'ok\n');
+ assert.equal((await fetch(url('/healthz'),{method:'HEAD'})).status,200);
+ const script=await fetch(url('/src/main.js'));
+ assert.equal(script.status,200);
+ assert.match(script.headers.get('content-type'),/^text\/javascript/);
+ assert.equal(script.headers.get('cache-control'),'no-cache');
+ assert.equal(script.headers.get('x-content-type-options'),'nosniff');
+ const cached=await fetch(url('/src/main.js'),{headers:{'If-Modified-Since':script.headers.get('last-modified')}});
+ assert.equal(cached.status,304);
+ for(const folder of ['/src/','/vendor/','/fonts/'])assert.equal((await fetch(url(folder))).status,404,folder);
+ assert.equal((await fetch(url('/'))).status,200);
+});
